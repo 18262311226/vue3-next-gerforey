@@ -6,6 +6,7 @@ var Vue = (function (exports) {
     };
     var isObject = function (val) { return val != null && typeof val === 'object'; };
     var hasChanged = function (value, oldValue) { return Object.is(value, oldValue); };
+    var isFunction = function (val) { return typeof val === 'function'; };
 
     /******************************************************************************
     Copyright (c) Microsoft Corporation.
@@ -235,6 +236,35 @@ var Vue = (function (exports) {
         return !!(r && r.__v_isRef === true);
     }
 
+    var computedRefImpl = /** @class */ (function () {
+        function computedRefImpl(getter) {
+            this.dep = undefined;
+            this.__v_isRef = true;
+            this.effect = new ReactiveEffect(getter);
+            this.effect.computed = this;
+        }
+        Object.defineProperty(computedRefImpl.prototype, "value", {
+            get: function () {
+                trackRefValue(this);
+                this._value = this.effect.run();
+                return this._value;
+            },
+            enumerable: false,
+            configurable: true
+        });
+        return computedRefImpl;
+    }());
+    function computed(getterOrOptions) {
+        var getter;
+        var onlyGetter = isFunction(getterOrOptions);
+        if (onlyGetter) {
+            getter = getterOrOptions;
+        }
+        var cRef = new computedRefImpl(getter);
+        return cRef;
+    }
+
+    exports.computed = computed;
     exports.effect = effect;
     exports.reactive = reactive;
     exports.ref = ref;
